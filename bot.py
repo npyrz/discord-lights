@@ -32,6 +32,11 @@ TUYA_CLIENT_ID = os.getenv("TUYA_CLIENT_ID")
 TUYA_CLIENT_SECRET = os.getenv("TUYA_CLIENT_SECRET")
 TUYA_DEVICE_ID = os.getenv("TUYA_DEVICE_ID")
 
+# Members with this role can always control the lights AND can lock/unlock
+# public access with /lightaccess. Optional: leave unset to let everyone in.
+_role = os.getenv("LIGHT_ADMIN_ROLE_ID", "").strip()
+ADMIN_ROLE_ID = int(_role) if _role.isdigit() else None
+
 _missing = [k for k, v in {
     "DISCORD_TOKEN": DISCORD_TOKEN,
     "TUYA_CLIENT_ID": TUYA_CLIENT_ID,
@@ -221,6 +226,45 @@ def set_color(name: str):
 
 
 # ---------------------------------------------------------------------------
+# Access control: a lock that (when on) limits light control to the admin role.
+# The state is persisted so it survives restarts / container recreation.
+# ---------------------------------------------------------------------------
+STATE_FILE = os.getenv("STATE_FILE") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "state.json"
+)
+
+
+def _load_public_access():
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            return bool(json.load(f).get("public_access", True))
+    except Exception:
+        return True  # default: everyone can use the lights
+
+
+def _save_public_access(value):
+    try:
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump({"public_access": value}, f)
+    except Exception as e:
+        print(f"[warn] could not save access state: {e}")
+
+
+public_access = _load_public_access()
+
+
+def _has_admin_role(interaction: "discord.Interaction") -> bool:
+    if ADMIN_ROLE_ID is None:
+        return False
+    roles = getattr(interaction.user, "roles", None)  # only set for guild members
+    return bool(roles) and any(r.id == ADMIN_ROLE_ID for r in roles)
+
+
+def _can_control(interaction: "discord.Interaction") -> bool:
+    return public_access or _has_admin_role(interaction)
+
+
+# ---------------------------------------------------------------------------
 # Discord client
 # ---------------------------------------------------------------------------
 intents = discord.Intents.default()
@@ -258,6 +302,13 @@ async def light(
     color: Optional[app_commands.Choice[str]] = None,
     brightness: Optional[int] = None,
 ):
+    if not _can_control(interaction):
+        await interaction.response.send_message(
+            "🔒 The lights are currently locked. Ask someone with the admin role "
+            "to unlock them with `/lightaccess state:on`.",
+            ephemeral=True,
+        )
+        return
     await interaction.response.defer(thinking=True)
     done = []
     try:
@@ -281,6 +332,28 @@ async def light(
         await interaction.followup.send("💡 Set " + ", ".join(done) + ".")
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error talking to the light: `{e}`")
+
+
+@tree.command(name="lightaccess", description="Lock/unlock light control for everyone (admin role only)")
+@app_commands.describe(state="on = anyone can use the lights, off = only the admin role can")
+@app_commands.choices(state=[
+    app_commands.Choice(name="on", value="on"),
+    app_commands.Choice(name="off", value="off"),
+])
+async def lightaccess(interaction: discord.Interaction, state: app_commands.Choice[str]):
+    if not _has_admin_role(interaction):
+        await interaction.response.send_message(
+            "⛔ Only members with the admin role can change light access.",
+            ephemeral=True,
+        )
+        return
+    global public_access
+    public_access = (state.value == "on")
+    _save_public_access(public_access)
+    if public_access:
+        await interaction.response.send_message("🔓 Lights **unlocked** — anyone can use `/light` now.")
+    else:
+        await interaction.response.send_message("🔒 Lights **locked** — only the admin role can use `/light` now.")
 
 
 @tree.command(name="lightinfo", description="Show the light's real status + supported codes (troubleshooting)")

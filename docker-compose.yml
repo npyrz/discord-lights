@@ -3,4 +3,12 @@ services:
     build: .
     container_name: discord-lights
     env_file: .env
+    environment:
+      # Persist the /lightaccess lock state in the mounted volume below.
+      STATE_FILE: /data/state.json
+    volumes:
+      - lights-data:/data
     restart: unless-stopped
+
+volumes:
+  lights-data:
