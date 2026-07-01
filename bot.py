@@ -353,8 +353,14 @@ async def lightaccess(interaction: discord.Interaction, state: app_commands.Choi
         await interaction.response.send_message("🔒 Lights **locked** — only the admin can use `/light` now.")
 
 
-@tree.command(name="lightinfo", description="Show the light's real status + supported codes (troubleshooting)")
+@tree.command(name="lightinfo", description="Show the light's real status + supported codes (admin only)")
 async def lightinfo(interaction: discord.Interaction):
+    if not _is_admin(interaction):
+        await interaction.response.send_message(
+            "⛔ Only the admin can use `/lightinfo`.",
+            ephemeral=True,
+        )
+        return
     await interaction.response.defer(thinking=True)
     try:
         status = await asyncio.to_thread(cloud.getstatus, TUYA_DEVICE_ID)

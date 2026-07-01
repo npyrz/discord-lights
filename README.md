@@ -8,7 +8,7 @@ A Discord bot that controls your Cozylady / Tuya Wi-Fi LED strip with a `/light`
 /light brightness:75
 /light power:on color:purple brightness:50   (combine them)
 /lightaccess state:off                        (admin only: lock the lights for everyone else)
-/lightinfo                                    (troubleshooting: shows real device codes)
+/lightinfo                                    (admin only: shows real device codes)
 ```
 
 ## Restricting who can use the lights
@@ -16,6 +16,7 @@ Set `LIGHT_ADMIN_USER_ID` in `.env` to a single Discord user ID (the admin). The
 - That user can **always** control the lights.
 - That user can run `/lightaccess state:off` to **lock** the lights so only they can
   use `/light`, and `/lightaccess state:on` to unlock them for everyone.
+- `/lightinfo` and `/lightaccess` are **always admin-only**, regardless of the lock.
 - The lock state is remembered across restarts (saved in `state.json`).
 
 To get a user ID: Discord **Settings -> Advanced -> Developer Mode**, then right-click
