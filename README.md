@@ -7,20 +7,19 @@ A Discord bot that controls your Cozylady / Tuya Wi-Fi LED strip with a `/light`
 /light color:blue
 /light brightness:75
 /light power:on color:purple brightness:50   (combine them)
-/lightaccess state:off                        (admin role: lock the lights for everyone else)
+/lightaccess state:off                        (admin only: lock the lights for everyone else)
 /lightinfo                                    (troubleshooting: shows real device codes)
 ```
 
 ## Restricting who can use the lights
-Set `LIGHT_ADMIN_ROLE_ID` in `.env` to a Discord role ID. Then:
-- Members with that role can **always** control the lights.
-- Anyone with that role can run `/lightaccess state:off` to **lock** the lights so
-  only the admin role can use `/light`, and `/lightaccess state:on` to unlock them.
+Set `LIGHT_ADMIN_USER_ID` in `.env` to a single Discord user ID (the admin). Then:
+- That user can **always** control the lights.
+- That user can run `/lightaccess state:off` to **lock** the lights so only they can
+  use `/light`, and `/lightaccess state:on` to unlock them for everyone.
 - The lock state is remembered across restarts (saved in `state.json`).
 
-To get a role ID: Discord **Settings -> Advanced -> Developer Mode**, then right-click
-the role (in Server Settings -> Roles) -> **Copy Role ID**. Leave the variable blank
-to let everyone use the lights.
+To get a user ID: Discord **Settings -> Advanced -> Developer Mode**, then right-click
+the user -> **Copy User ID**. Leave the variable blank to let everyone use the lights.
 
 ## 1. Install Python + dependencies
 Make sure Python 3.9+ is installed (`python --version`). Then in this folder:
