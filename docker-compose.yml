@@ -1,0 +1,6 @@
+services:
+  discord-lights:
+    build: .
+    container_name: discord-lights
+    env_file: .env
+    restart: unless-stopped
